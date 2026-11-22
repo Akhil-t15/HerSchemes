@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pytest
+httpx
+livekit-api
+livekit
+livekit-agents
+livekit-plugins-silero
+python-dotenv

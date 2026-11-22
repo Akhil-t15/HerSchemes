@@ -1,0 +1,7 @@
+[
+  {"id": "quick-tailoring", "text_en": "I want to start a tailoring shop", "text_te": "నేను టైలరింగ్ దుకాణం ప్రారంభించాలనుకుంటున్నాను", "answers": {"business_type": "tailoring", "stage": "new"}},
+  {"id": "quick-pickles", "text_en": "I make pickles at home and sell them", "text_te": "నేను ఇంట్లో ఊరగాయలు తయారు చేసి అమ్ముతాను", "answers": {"business_type": "food_processing", "stage": "existing"}},
+  {"id": "quick-shg", "text_en": "I am in a women's self-help group", "text_te": "నేను మహిళా స్వయం సహాయక సంఘంలో సభ్యురాలిని", "answers": {"shg_member": true}},
+  {"id": "quick-loan", "text_en": "I need a loan for my small business", "text_te": "నా చిన్న వ్యాపారానికి రుణం కావాలి", "answers": {}},
+  {"id": "quick-village", "text_en": "I live in a village", "text_te": "నేను గ్రామంలో నివసిస్తున్నాను", "answers": {"location_type": "village"}}
+]

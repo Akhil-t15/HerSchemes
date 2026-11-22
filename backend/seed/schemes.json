@@ -1,0 +1,74 @@
+[
+  {
+    "slug": "indira-mahila-shakti",
+    "name_en": "Indira Mahila Shakti",
+    "name_te": null,
+    "level": "state",
+    "lane": "Telangana State schemes",
+    "description": null,
+    "official_url": "TODO-VERIFY-OFFICIAL-URL",
+    "status": "draft",
+    "rules": [],
+    "documents": []
+  },
+  {
+    "slug": "stree-nidhi",
+    "name_en": "Stree Nidhi",
+    "name_te": null,
+    "level": "state",
+    "lane": "Telangana State schemes",
+    "description": null,
+    "official_url": "TODO-VERIFY-OFFICIAL-URL",
+    "status": "draft",
+    "rules": [],
+    "documents": []
+  },
+  {
+    "slug": "pm-vishwakarma",
+    "name_en": "PM Vishwakarma",
+    "name_te": null,
+    "level": "central",
+    "lane": "Central loan",
+    "description": null,
+    "official_url": "TODO-VERIFY-OFFICIAL-URL",
+    "status": "draft",
+    "rules": [],
+    "documents": []
+  },
+  {
+    "slug": "pmegp",
+    "name_en": "PMEGP",
+    "name_te": null,
+    "level": "central",
+    "lane": "Central loan",
+    "description": null,
+    "official_url": "TODO-VERIFY-OFFICIAL-URL",
+    "status": "draft",
+    "rules": [],
+    "documents": []
+  },
+  {
+    "slug": "pm-mudra",
+    "name_en": "PM Mudra",
+    "name_te": null,
+    "level": "central",
+    "lane": "Central loan",
+    "description": null,
+    "official_url": "TODO-VERIFY-OFFICIAL-URL",
+    "status": "draft",
+    "rules": [],
+    "documents": []
+  },
+  {
+    "slug": "telangana-msme-policy",
+    "name_en": "Telangana MSME Policy",
+    "name_te": null,
+    "level": "state",
+    "lane": "Telangana State schemes",
+    "description": null,
+    "official_url": "TODO-VERIFY-OFFICIAL-URL",
+    "status": "draft",
+    "rules": [],
+    "documents": []
+  }
+]
