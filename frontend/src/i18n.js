@@ -132,6 +132,11 @@ export const STRINGS = {
     bankNeedPhone: "Enter a valid 10-digit mobile number.",
     bankErr404: "This scheme is not open for call requests right now.",
     bankErrGeneric: "The request could not be sent. Please try again.",
+    colEligible: "Eligible Schemes",
+    colCentralState: "Central vs State",
+    colCentral: "Central Schemes",
+    colState: "State Schemes",
+    colBankCall: "Request Bank Call",
   },
   te: {
     langEn: "English",
@@ -265,6 +270,11 @@ export const STRINGS = {
     bankNeedPhone: "సరైన 10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి.",
     bankErr404: "ఈ పథకానికి ప్రస్తుతం కాల్ అభ్యర్థనలు అందుబాటులో లేవు.",
     bankErrGeneric: "అభ్యర్థన పంపలేకపోయాము. దయచేసి మళ్ళీ ప్రయత్నించండి.",
+    colEligible: "అర్హత పథకాలు",
+    colCentralState: "కేంద్ర vs రాష్ట్ర",
+    colCentral: "కేంద్ర పథకాలు",
+    colState: "రాష్ట్ర పథకాలు",
+    colBankCall: "బ్యాంకు కాల్ అభ్యర్థన",
   },
 };
 
