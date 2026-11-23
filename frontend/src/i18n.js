@@ -120,7 +120,8 @@ export const STRINGS = {
     impactTopSchemes: "Top schemes",
     impactNone: "No data recorded yet.",
     impactSessions: "{count} sessions",
-    bankTitle: "Bank loan schemes",
+    bankTitle: "Government Schemes & Bank Loans",
+    bankSubtitle: "Explore all schemes, central vs state distribution, and request free bank callbacks.",
     bankError: "Bank loan schemes could not be loaded. Text still works.",
     bankNone: "No bank loan schemes listed right now.",
     bankCallSwitch: "Let a partner bank call me for free",
@@ -137,6 +138,7 @@ export const STRINGS = {
     colCentral: "Central Schemes",
     colState: "State Schemes",
     colBankCall: "Request Bank Call",
+    viewAllBelow: "Explore full 3-column breakdown & bank loans below ↓",
   },
   te: {
     langEn: "English",
@@ -258,7 +260,8 @@ export const STRINGS = {
     impactTopSchemes: "ముఖ్య పథకాలు",
     impactNone: "ఇంకా డేటా నమోదు కాలేదు.",
     impactSessions: "{count} సెషన్లు",
-    bankTitle: "బ్యాంకు రుణ పథకాలు",
+    bankTitle: "ప్రభుత్వ పథకాలు & బ్యాంకు రుణాలు",
+    bankSubtitle: "అన్ని పథకాలు, కేంద్ర vs రాష్ట్ర విభజన మరియు ఉచిత బ్యాంకు కాల్ అభ్యర్థనలను అన్వేషించండి.",
     bankError: "బ్యాంకు రుణ పథకాలు లోడ్ కాలేదు. టెక్స్ట్ ఇప్పటికీ పనిచేస్తుంది.",
     bankNone: "ప్రస్తుతం బ్యాంకు రుణ పథకాలు ఏవీ జాబితాలో లేవు.",
     bankCallSwitch: "ఉచితంగా బ్యాంకు నుండి కాల్ చేయించుకోవాలా",
@@ -275,6 +278,7 @@ export const STRINGS = {
     colCentral: "కేంద్ర పథకాలు",
     colState: "రాష్ట్ర పథకాలు",
     colBankCall: "బ్యాంకు కాల్ అభ్యర్థన",
+    viewAllBelow: "క్రింద పూర్తి 3-కాలమ్ వివరాలు & బ్యాంకు రుణాలను చూడండి ↓",
   },
 };
 

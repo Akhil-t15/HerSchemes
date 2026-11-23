@@ -52,6 +52,8 @@ const state = {
     schemes: null, // null (loading) | array of bank-loan schemes | "error"
     forms: {}, // per-scheme call-request form state, keyed by slug
   },
+  allSchemes: null, // all published schemes from /api/schemes
+  matchedSchemes: null, // latest matched schemes from chat follow-up
 };
 
 let liveVoiceOn = false; // Module 9: LiveKit session running
@@ -369,13 +371,15 @@ adminConsole.append(adminForm, adminPreview, adminPendingTitle, adminList);
 
 adminPanel.append(adminHeader, adminJudgeBanner, adminMessage, adminLoginForm, adminConsole);
 
-// Module 8: bank-loan cards, one per scheme, each with an opt-in call switch.
+// Module 8: 3-column schemes & bank-loan explorer, utilizing space under the chat
 const bankSection = el("section", "home-section");
+bankSection.id = "bank-section";
 const bankTitle = tEl("h2", "", "bankTitle");
-const bankGrid = el("div", "demo-grid");
+const bankSubtitle = tEl("p", "caption", "bankSubtitle");
+const bankExplorer = el("div", "schemes-explorer-macro");
 const bankNote = el("p", "body");
 bankNote.setAttribute("aria-live", "polite");
-bankSection.append(bankTitle, bankGrid, bankNote);
+bankSection.append(bankTitle, bankSubtitle, bankExplorer, bankNote);
 
 // Module 8: partner and sponsor login panel, opened from the footer link.
 const partnerPanel = el("section", "admin-panel partner-panel");
@@ -962,6 +966,10 @@ async function askFollowUp(reply, text, skipped) {
     reply.reply = data.reply || null;
     reply.question = !skipped && data.questions.length > 0 ? data.questions[0] : null;
     reply.matches = (data.done || (data.matches && data.matches.length > 0)) ? data.matches : [];
+    if (reply.matches && reply.matches.length > 0) {
+      state.matchedSchemes = reply.matches;
+      renderBank();
+    }
     if (data.reply || reply.question) state.roundsAsked += 1;
     if (data.done || skipped || (data.matches && data.matches.length > 0)) state.lastQuestionKey = null;
   } catch {
@@ -1090,7 +1098,7 @@ function renderMatch(match) {
   return li;
 }
 
-// Skip button for the latest question, and the matches list once the flow is done.
+// Compact summary of matching schemes inside the chat balloon
 function renderFollowUp(m, isLast) {
   const parts = [];
   const hasQuestion = !m.pending && (m.question || m.reply);
@@ -1108,108 +1116,64 @@ function renderFollowUp(m, isLast) {
     parts.push(skip);
   }
   if (m.matches.length > 0) {
-    // Split matches into central and state
-    const centralMatches = m.matches.filter((x) => String(x.level || "").toLowerCase() === "central");
-    const stateMatches = m.matches.filter((x) => String(x.level || "").toLowerCase() !== "central");
-    const bankMatches = m.matches.filter((x) => x.is_bank_loan);
+    const summary = el("div", "chat-schemes-summary");
+    const summaryHeader = el("div", "chat-summary-header");
+    summaryHeader.append(
+      el("span", "chat-summary-title", t(state.lang, "matchesTitle") + ` (${m.matches.length})`)
+    );
+    summary.append(summaryHeader);
 
-    // Three-column results panel
-    const resultsPanel = el("div", "results-panel");
+    const list = el("ul", "chat-summary-list");
+    m.matches.forEach((s) => {
+      const item = el("li", "chat-summary-item");
 
-    // Column 1: Eligible schemes (all)
-    const col1 = el("div", "results-col");
-    col1.append(el("h3", "results-col-title", t(state.lang, "colEligible")));
-    const allList = el("ul", "match-list match-list--compact");
-    allList.replaceChildren(...m.matches.map(renderMatch));
-    col1.append(allList);
-    resultsPanel.append(col1);
+      const top = el("div", "chat-summary-top");
+      top.append(el("span", "chat-summary-name", localized(s, "name") || s.slug));
 
-    // Column 2: Central vs State breakdown
-    const col2 = el("div", "results-col");
-    col2.append(el("h3", "results-col-title", t(state.lang, "colCentralState")));
-    if (centralMatches.length > 0) {
-      col2.append(el("span", "results-sub-label", "🇮🇳 " + t(state.lang, "colCentral") + ` (${centralMatches.length})`));
-      const cList = el("ul", "match-list match-list--mini");
-      cList.replaceChildren(...centralMatches.map((x) => {
-        const item = el("li", "match-mini");
-        item.append(el("span", "match-name", localized(x, "name") || x.slug));
-        const isLikely = String(x.status || "").trim().toLowerCase().replace(/[\s-]+/g, "_") === "likely_eligible";
-        item.append(el("span", `badge badge--sm ${isLikely ? "badge--likely" : "badge--needs"}`, isLikely ? "✓" : "?"));
-        return item;
-      }));
-      col2.append(cList);
-    }
-    if (stateMatches.length > 0) {
-      col2.append(el("span", "results-sub-label", "🏛️ " + t(state.lang, "colState") + ` (${stateMatches.length})`));
-      const sList = el("ul", "match-list match-list--mini");
-      sList.replaceChildren(...stateMatches.map((x) => {
-        const item = el("li", "match-mini");
-        item.append(el("span", "match-name", localized(x, "name") || x.slug));
-        const isLikely = String(x.status || "").trim().toLowerCase().replace(/[\s-]+/g, "_") === "likely_eligible";
-        item.append(el("span", `badge badge--sm ${isLikely ? "badge--likely" : "badge--needs"}`, isLikely ? "✓" : "?"));
-        return item;
-      }));
-      col2.append(sList);
-    }
-    resultsPanel.append(col2);
+      const badges = el("div", "chat-summary-badges");
+      const level = String(s.level || "").toLowerCase();
+      if (level) {
+        badges.append(el("span", `badge badge--level badge--${level}`, level === "central" ? "🇮🇳 Central" : "🏛️ State"));
+      }
+      const isLikely = String(s.status || "").trim().toLowerCase().replace(/[\s-]+/g, "_") === "likely_eligible";
+      badges.append(el("span", `badge ${isLikely ? "badge--likely" : "badge--needs"}`, t(state.lang, isLikely ? "badgeLikely" : "badgeNeeds")));
+      top.append(badges);
+      item.append(top);
 
-    // Column 3: Bank call toggle
-    const col3 = el("div", "results-col");
-    col3.append(el("h3", "results-col-title", t(state.lang, "colBankCall")));
-    if (bankMatches.length > 0) {
-      bankMatches.forEach((bm) => {
-        const slug = String(bm.slug || "").trim();
-        const f = bankFormFor(slug);
-        const row = el("div", "bank-call-row");
-        row.append(el("span", "bank-call-name", localized(bm, "name") || slug));
+      const benefit = localized(s, "benefit") || s.description || "";
+      if (benefit) {
+        item.append(el("p", "chat-summary-benefit", benefit));
+      }
 
-        const switchLabel = el("label", "match-bank-switch");
-        const toggle = el("input");
-        toggle.type = "checkbox";
-        toggle.setAttribute("role", "switch");
-        toggle.checked = f.on;
-        toggle.disabled = f.sending;
-        toggle.addEventListener("change", () => {
-          f.on = toggle.checked;
-          f.phone = "";
-          f.message = null;
-          renderConversation();
-        });
-        switchLabel.append(toggle, el("span", "match-bank-caption", t(state.lang, "bankCallSwitch")));
-        row.append(switchLabel);
+      const actions = el("div", "chat-summary-actions");
+      const slug = typeof s.slug === "string" ? s.slug.trim() : "";
+      if (slug) {
+        const chkBtn = el("button", "btn-checklist btn-checklist--sm", t(state.lang, "viewChecklist"));
+        chkBtn.type = "button";
+        chkBtn.addEventListener("click", () => openChecklist(slug));
+        actions.append(chkBtn);
+      }
+      const url = typeof s.official_url === "string" ? s.official_url : "";
+      if (/^https?:\/\//i.test(url)) {
+        const link = el("a", "match-link", t(state.lang, "officialWebsite"));
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        actions.append(link);
+      }
+      item.append(actions);
+      list.append(item);
+    });
+    summary.append(list);
 
-        if (f.on) {
-          const form = el("form", "match-bank-form");
-          const phone = el("input", "match-bank-input");
-          phone.type = "tel";
-          phone.autocomplete = "tel";
-          phone.placeholder = t(state.lang, "bankPhonePlaceholder");
-          phone.value = f.phone;
-          phone.addEventListener("input", () => { f.phone = phone.value; });
-          const submit = el("button", "btn-sm", t(state.lang, "bankSubmit"));
-          submit.type = "submit";
-          submit.disabled = f.sending;
-          form.append(phone, submit);
-          form.addEventListener("submit", (event) => {
-            event.preventDefault();
-            submitBankLead({ slug }, f);
-          });
-          row.append(form);
-        }
-        if (f.message) {
-          const msg = el("p", "admin-message", t(state.lang, f.message));
-          msg.setAttribute("role", "status");
-          msg.classList.toggle("admin-message--error", f.error);
-          row.append(msg);
-        }
-        col3.append(row);
-      });
-    } else {
-      col3.append(el("p", "caption", t(state.lang, "bankNone")));
-    }
-    resultsPanel.append(col3);
+    const exploreBtn = el("button", "btn-explore-below", t(state.lang, "viewAllBelow"));
+    exploreBtn.type = "button";
+    exploreBtn.addEventListener("click", () => {
+      bankSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    summary.append(exploreBtn);
 
-    parts.push(el("span", "label", t(state.lang, "matchesTitle")), resultsPanel);
+    parts.push(summary);
   }
   return parts;
 }
@@ -1735,8 +1699,11 @@ function bankFormFor(slug) {
 async function loadBanks() {
   try {
     const schemes = await fetchList("/api/schemes");
-    state.banks.schemes = asObjects(schemes).filter((s) =>
-      BANK_LOAN_LANE.test(String(s.lane ?? ""))
+    const objs = asObjects(schemes);
+    state.allSchemes = objs;
+    state.banks.schemes = objs.filter((s) =>
+      BANK_LOAN_LANE.test(String(s.lane ?? "")) ||
+      ["pm-mudra", "pmegp", "pm-vishwakarma", "stree-nidhi"].includes(String(s.slug ?? ""))
     );
   } catch {
     state.banks.schemes = "error";
@@ -1744,34 +1711,87 @@ async function loadBanks() {
   renderBank();
 }
 
-function renderBank() {
-  bankTitle.textContent = t(state.lang, "bankTitle");
-  bankGrid.replaceChildren();
-  bankNote.textContent = "";
-  const schemes = state.banks.schemes;
-  if (schemes === null) {
-    bankNote.textContent = t(state.lang, "loading");
-    return;
+function buildBlendedSchemeRow(s) {
+  const row = el("div", "blended-scheme-row");
+
+  const header = el("div", "blended-scheme-header");
+  header.append(el("span", "blended-scheme-name", localized(s, "name") || String(s.slug || "")));
+
+  const badges = el("div", "chat-summary-badges");
+  const level = String(s.level || "").toLowerCase();
+  if (level) {
+    badges.append(el("span", `badge badge--level badge--${level}`, level === "central" ? "🇮🇳 Central" : "🏛️ State"));
   }
-  if (schemes === "error") {
-    bankNote.textContent = t(state.lang, "bankError");
-    return;
+  const isLikely = String(s.status || "").trim().toLowerCase().replace(/[\s-]+/g, "_") === "likely_eligible";
+  badges.append(el("span", `badge ${isLikely ? "badge--likely" : "badge--needs"}`, t(state.lang, isLikely ? "badgeLikely" : "badgeNeeds")));
+  header.append(badges);
+  row.append(header);
+
+  const benefit = localized(s, "benefit") || s.description || "";
+  if (benefit) {
+    row.append(el("p", "blended-scheme-benefit", benefit));
   }
-  if (schemes.length === 0) {
-    bankNote.textContent = t(state.lang, "bankNone");
-    return;
+
+  const actions = el("div", "blended-scheme-actions");
+  const slug = typeof s.slug === "string" ? s.slug.trim() : "";
+  if (slug) {
+    const chkBtn = el("button", "btn-checklist btn-checklist--sm", t(state.lang, "viewChecklist"));
+    chkBtn.type = "button";
+    chkBtn.addEventListener("click", () => openChecklist(slug));
+    actions.append(chkBtn);
   }
-  schemes.forEach((s, i) => bankGrid.append(buildBankCard(s, VARIANTS[i % VARIANTS.length])));
+  const url = typeof s.official_url === "string" ? s.official_url : "";
+  if (/^https?:\/\//i.test(url)) {
+    const link = el("a", "match-link", t(state.lang, "officialWebsite"));
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    actions.append(link);
+  }
+  row.append(actions);
+  return row;
 }
 
-function buildBankCard(scheme, variant) {
+function buildBreakdownRow(s) {
+  const row = el("div", "breakdown-scheme-row");
+  const header = el("div", "breakdown-scheme-header");
+  header.append(el("span", "breakdown-scheme-name", localized(s, "name") || String(s.slug || "")));
+
+  const isLikely = String(s.status || "").trim().toLowerCase().replace(/[\s-]+/g, "_") === "likely_eligible";
+  header.append(el("span", `badge badge--sm ${isLikely ? "badge--likely" : "badge--needs"}`, isLikely ? "✓" : "?"));
+  row.append(header);
+
+  const benefit = localized(s, "benefit") || s.description || "";
+  if (benefit) {
+    row.append(el("p", "breakdown-scheme-benefit", benefit));
+  }
+
+  const url = typeof s.official_url === "string" ? s.official_url : "";
+  if (/^https?:\/\//i.test(url)) {
+    const link = el("a", "match-link", t(state.lang, "officialWebsite"));
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    row.append(link);
+  }
+  return row;
+}
+
+function buildBlendedBankRow(scheme) {
   const slug = String(scheme.slug ?? "");
   const f = bankFormFor(slug);
-  const card = el("div", `card bank-card ${variant}`);
-  card.append(el("h3", "value", localized(scheme, "name") || slug));
+  const row = el("div", "blended-bank-row");
 
-  // The switch is unchecked by default. Nothing is sent unless it is ON and the form is submitted.
-  const switchLabel = el("label", "switch");
+  const header = el("div", "blended-scheme-header");
+  header.append(el("span", "blended-bank-name", localized(scheme, "name") || slug));
+  row.append(header);
+
+  const benefit = localized(scheme, "benefit") || scheme.description || "";
+  if (benefit) {
+    row.append(el("p", "blended-bank-benefit", benefit));
+  }
+
+  const switchLabel = el("label", "blended-bank-switch");
   const toggle = el("input");
   toggle.type = "checkbox";
   toggle.setAttribute("role", "switch");
@@ -1779,43 +1799,152 @@ function buildBankCard(scheme, variant) {
   toggle.disabled = f.sending;
   toggle.addEventListener("change", () => {
     f.on = toggle.checked;
-    f.phone = ""; // a number typed before switching off is discarded
+    f.phone = "";
     f.message = null;
     renderBank();
   });
-  switchLabel.append(toggle, el("span", "body", t(state.lang, "bankCallSwitch")));
-  card.append(switchLabel);
+  switchLabel.append(toggle, el("span", "", t(state.lang, "bankCallSwitch")));
+  row.append(switchLabel);
 
   if (f.on) {
-    const form = el("form", "admin-form");
-    const phoneLabel = el("label", "label", t(state.lang, "bankPhoneLabel"));
-    const phone = el("input", "admin-input");
+    const form = el("form", "blended-bank-form");
+    const formRow = el("div", "blended-bank-form-row");
+    const phone = el("input", "blended-bank-input");
     phone.type = "tel";
     phone.autocomplete = "tel";
     phone.placeholder = t(state.lang, "bankPhonePlaceholder");
     phone.value = f.phone;
-    phone.addEventListener("input", () => {
-      f.phone = phone.value;
-    });
-    phoneLabel.append(phone);
-    const submit = el("button", "btn-primary", t(state.lang, "bankSubmit"));
+    phone.addEventListener("input", () => { f.phone = phone.value; });
+
+    const submit = el("button", "btn-primary btn-sm", t(state.lang, "bankSubmit"));
     submit.type = "submit";
     submit.disabled = f.sending;
-    form.append(phoneLabel, el("p", "caption", t(state.lang, "bankConsentNote")), submit);
+    formRow.append(phone, submit);
+
+    form.append(formRow, el("p", "caption", t(state.lang, "bankConsentNote")));
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       submitBankLead(scheme, f);
     });
-    card.append(form);
+    row.append(form);
   }
 
   if (f.message) {
     const msg = el("p", "admin-message", t(state.lang, f.message));
     msg.setAttribute("role", "status");
     msg.classList.toggle("admin-message--error", f.error);
-    card.append(msg);
+    row.append(msg);
   }
-  return card;
+  return row;
+}
+
+function renderBank() {
+  bankTitle.textContent = t(state.lang, "bankTitle");
+  bankSubtitle.textContent = t(state.lang, "bankSubtitle");
+  bankExplorer.replaceChildren();
+  bankNote.textContent = "";
+
+  const activeSchemes = (state.matchedSchemes && state.matchedSchemes.length > 0)
+    ? state.matchedSchemes
+    : (state.allSchemes || []);
+
+  const rawLoans = (state.matchedSchemes && state.matchedSchemes.length > 0)
+    ? state.matchedSchemes.filter((s) => s.is_bank_loan || BANK_LOAN_LANE.test(String(s.lane ?? "")) || ["pm-mudra", "pmegp", "pm-vishwakarma", "stree-nidhi"].includes(String(s.slug ?? "")))
+    : (state.banks.schemes && state.banks.schemes !== "error" ? state.banks.schemes : []);
+
+  const fallbackLoans = (rawLoans.length > 0) ? rawLoans : (state.allSchemes || []).filter((s) =>
+    BANK_LOAN_LANE.test(String(s.lane ?? "")) ||
+    ["pm-mudra", "pmegp", "pm-vishwakarma", "stree-nidhi"].includes(String(s.slug ?? ""))
+  );
+
+  const centralSchemes = activeSchemes.filter((s) => String(s.level || "").toLowerCase() === "central");
+  const stateSchemes = activeSchemes.filter((s) => String(s.level || "").toLowerCase() !== "central");
+
+  if (activeSchemes.length === 0 && state.banks.schemes === null) {
+    bankNote.textContent = t(state.lang, "loading");
+    return;
+  }
+  if (state.banks.schemes === "error" && activeSchemes.length === 0) {
+    bankNote.textContent = t(state.lang, "bankError");
+    return;
+  }
+
+  const container = el("div", "schemes-3col-container");
+
+  // Column 1: Eligible schemes
+  const col1 = el("div", "schemes-col schemes-col--eligible");
+  const col1Header = el("div", "schemes-col-header");
+  col1Header.append(
+    el("h3", "schemes-col-title", t(state.lang, "colEligible")),
+    el("span", "schemes-col-count", `(${activeSchemes.length})`)
+  );
+  col1.append(col1Header);
+
+  const col1List = el("div", "schemes-col-list");
+  if (activeSchemes.length > 0) {
+    activeSchemes.forEach((s) => col1List.append(buildBlendedSchemeRow(s)));
+  } else {
+    col1List.append(el("p", "caption", t(state.lang, "bankNone")));
+  }
+  col1.append(col1List);
+  container.append(col1);
+
+  // Column 2: Central vs State separation
+  const col2 = el("div", "schemes-col schemes-col--breakdown");
+  const col2Header = el("div", "schemes-col-header");
+  col2Header.append(
+    el("h3", "schemes-col-title", t(state.lang, "colCentralState"))
+  );
+  col2.append(col2Header);
+
+  const col2List = el("div", "schemes-col-list");
+  if (centralSchemes.length > 0) {
+    const cGroup = el("div", "breakdown-group");
+    const cTitle = el("div", "breakdown-group-title");
+    cTitle.append(
+      el("span", "", "🇮🇳 " + t(state.lang, "colCentral")),
+      el("span", "badge badge--level badge--central", String(centralSchemes.length))
+    );
+    cGroup.append(cTitle);
+    centralSchemes.forEach((s) => cGroup.append(buildBreakdownRow(s)));
+    col2List.append(cGroup);
+  }
+  if (stateSchemes.length > 0) {
+    const sGroup = el("div", "breakdown-group");
+    const sTitle = el("div", "breakdown-group-title");
+    sTitle.append(
+      el("span", "", "🏛️ " + t(state.lang, "colState")),
+      el("span", "badge badge--level badge--state", String(stateSchemes.length))
+    );
+    sGroup.append(sTitle);
+    stateSchemes.forEach((s) => sGroup.append(buildBreakdownRow(s)));
+    col2List.append(sGroup);
+  }
+  if (centralSchemes.length === 0 && stateSchemes.length === 0) {
+    col2List.append(el("p", "caption", t(state.lang, "bankNone")));
+  }
+  col2.append(col2List);
+  container.append(col2);
+
+  // Column 3: Toggle bank call option
+  const col3 = el("div", "schemes-col schemes-col--bank");
+  const col3Header = el("div", "schemes-col-header");
+  col3Header.append(
+    el("h3", "schemes-col-title", t(state.lang, "colBankCall")),
+    el("span", "schemes-col-count", `(${fallbackLoans.length})`)
+  );
+  col3.append(col3Header);
+
+  const col3List = el("div", "schemes-col-list");
+  if (fallbackLoans.length > 0) {
+    fallbackLoans.forEach((s) => col3List.append(buildBlendedBankRow(s)));
+  } else {
+    col3List.append(el("p", "caption", t(state.lang, "bankNone")));
+  }
+  col3.append(col3List);
+  container.append(col3);
+
+  bankExplorer.append(container);
 }
 
 // Sends the phone number and opt_in=true only when the switch is ON.
