@@ -191,21 +191,11 @@ export async function startVoice(options = {}) {
       el.play().catch(() => options.onAudioBlocked?.());
     });
 
-    // Barge-in: if the user starts speaking while agent audio plays, pause the agent audio.
-    // When the agent speaks or user finishes speaking, ensure the audio element resumes playback.
+    // Server-side Silero VAD handles barge-in cleanly. Do not pause/play the <audio>
+    // element on ActiveSpeakersChanged, as pausing a live WebRTC track causes packet
+    // dropouts, stuttering, and cuts words in the middle when acoustic echo triggers localSpeaking.
     room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
       if (current.stopped) return;
-      const localSpeaking = speakers.some((p) => p.isLocal || p === room.localParticipant);
-      if (localSpeaking) {
-        for (const { el } of current.audioEls) {
-          if (!el.paused) el.pause();
-        }
-        options.onAgentSpeaking?.(false);
-        return;
-      }
-      for (const { el } of current.audioEls) {
-        if (el.paused) el.play().catch(() => {});
-      }
       const remoteSpeaking = speakers.some((p) => !p.isLocal && p !== room.localParticipant);
       if (remoteSpeaking) {
         options.onAgentSpeaking?.(true);
@@ -243,7 +233,11 @@ export async function startVoice(options = {}) {
       teardown(current);
       return false;
     }
-    await room.localParticipant.setMicrophoneEnabled(true);
+    await room.localParticipant.setMicrophoneEnabled(true, {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    });
     if (current.stopped) {
       teardown(current);
       return false;
