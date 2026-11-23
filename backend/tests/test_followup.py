@@ -282,3 +282,81 @@ def test_multiturn_flow_progresses_without_repeating_questions():
     ).json()
     assert r3["known_facts"].get("shg_member") is False
     assert r3["question_key"] == "loan_amount"
+
+
+# ---------- proactive schemes presentation tests ----------
+
+def test_heuristic_extracts_karimanagar_alias():
+    from app.followup import _extract_heuristics
+    facts = _extract_heuristics("karimanagar", {})
+    assert facts.get("location") == "Karimnagar"
+
+
+def test_heuristic_extracts_agriculture_business():
+    from app.followup import _extract_heuristics
+    facts = _extract_heuristics("I do agriculture in Telangana", {})
+    assert facts.get("business_status") == "new business"
+
+
+def test_llm_mode_proactively_presents_schemes_when_key_facts_known(seeded_db, monkeypatch):
+    """When LLM finishes asking questions and presents schemes, it must be done proactively without typing 'ok'."""
+    groq_reply = (
+        "Thank you for sharing your location in Karimnagar! As an individual in agriculture, "
+        "you are likely eligible for collateral-free loans under the Kisan Credit Card (KCC) scheme. "
+        "I will now present the specific government schemes matching your profile.\n"
+        "```facts\n"
+        '{"location": "Karimnagar", "business_status": "agriculture"}\n'
+        "```"
+    )
+    monkeypatch.setattr(followup, "_call_groq", lambda msgs: groq_reply)
+
+    result = _run(
+        seeded_db,
+        message="karimanagar",
+        lang="en",
+        known_facts={"business_status": "agriculture"},
+        rounds_asked=1,
+        skipped=False,
+    )
+    assert result["done"] is True
+    assert len(result["matches"]) > 0
+    assert result["known_facts"]["location"] == "Karimnagar"
+    # Should not duplicate closing statement
+    assert "Based on your details, here are the government schemes that match your profile:" not in result["reply"]
+
+
+def test_llm_mode_proactively_presents_schemes_when_no_question_asked(seeded_db, monkeypatch):
+    """If LLM response contains no question to the user, done must be True so user isn't stuck."""
+    groq_reply = (
+        "Here are the government schemes matching your profile.\n"
+        "```facts\n"
+        '{"location": "Warangal"}\n'
+        "```"
+    )
+    monkeypatch.setattr(followup, "_call_groq", lambda msgs: groq_reply)
+
+    result = _run(
+        seeded_db,
+        message="warangal",
+        lang="en",
+        known_facts={"business_status": "tailoring"},
+        rounds_asked=1,
+        skipped=False,
+    )
+    assert result["done"] is True
+    assert len(result["matches"]) > 0
+
+
+def test_user_acknowledgment_triggers_done(seeded_db):
+    """If user types 'ok' or 'yes' after at least 1 round, it should present schemes."""
+    result = _run(
+        seeded_db,
+        message="ok",
+        lang="en",
+        known_facts={"location": "Karimnagar", "business_status": "agriculture"},
+        rounds_asked=1,
+        skipped=False,
+    )
+    assert result["done"] is True
+    assert len(result["matches"]) > 0
+

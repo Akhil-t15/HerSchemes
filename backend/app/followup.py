@@ -381,7 +381,7 @@ def _extract_heuristics(text: str, facts: Dict[str, Any]) -> Dict[str, Any]:
             updated["business_status"] = "new business"
         elif any(w in lowered for w in ("running", "already", "existing", "expand", "pickle", "pickles", "papad", "food", "నడుపుతున్న", "ఉన్న")):
             updated["business_status"] = "already running"
-        elif any(w in lowered for w in ("tailoring", "shop", "boutique", "dairy", "kirana", "beauty", "కుట్టు", "దుకాణం")):
+        elif any(w in lowered for w in ("tailoring", "shop", "boutique", "dairy", "kirana", "beauty", "agriculture", "farmer", "farming", "farm", "crops", "వ్యవసాయం", "రైతు", "కుట్టు", "దుకాణం")):
             updated["business_status"] = "new business"
 
     # SHG membership
@@ -396,17 +396,33 @@ def _extract_heuristics(text: str, facts: Dict[str, Any]) -> Dict[str, Any]:
         elif any(w in lowered for w in ("town", "city", "urban", "పట్టణం", "నగరం")):
             updated["location"] = "Urban Town"
         else:
-            districts = (
-                "warangal", "karimnagar", "hyderabad", "khammam", "nizamabad", "nalgonda",
-                "mahbubnagar", "adilabad", "medak", "rangareddy", "sangareddy", "siddipet",
-                "jagtial", "mancherial", "peddapalli", "suryapet", "yadadri", "bhadradri",
-                "kothagudem", "kamareddy", "vikarabad", "wanaparthy", "nagarkurnool",
-                "jogulamba", "gadwal", "guntur", "vijayawada", "visakhapatnam", "tirupati",
-            )
-            for d in districts:
-                if re.search(r"\b" + re.escape(d) + r"\b", lowered):
-                    updated["location"] = d.capitalize()
+            district_aliases = {
+                "karimanagar": "Karimnagar",
+                "karim nagar": "Karimnagar",
+                "mahabubnagar": "Mahbubnagar",
+                "mahboobnagar": "Mahbubnagar",
+                "ranga reddy": "Rangareddy",
+                "rangareddi": "Rangareddy",
+                "sanga reddy": "Sangareddy",
+                "secunderabad": "Hyderabad",
+                "vizag": "Visakhapatnam",
+            }
+            for alias, canonical in district_aliases.items():
+                if alias in lowered:
+                    updated["location"] = canonical
                     break
+            if not _has_value(updated.get("location")):
+                districts = (
+                    "warangal", "karimnagar", "hyderabad", "khammam", "nizamabad", "nalgonda",
+                    "mahbubnagar", "adilabad", "medak", "rangareddy", "sangareddy", "siddipet",
+                    "jagtial", "mancherial", "peddapalli", "suryapet", "yadadri", "bhadradri",
+                    "kothagudem", "kamareddy", "vikarabad", "wanaparthy", "nagarkurnool",
+                    "jogulamba", "gadwal", "guntur", "vijayawada", "visakhapatnam", "tirupati",
+                )
+                for d in districts:
+                    if re.search(r"\b" + re.escape(d) + r"\b", lowered):
+                        updated["location"] = d.capitalize()
+                        break
 
     # Loan amount
     if not _has_value(updated.get("loan_amount")):
@@ -480,6 +496,86 @@ def _infer_last_question(history: Optional[List[Dict[str, str]]]) -> Optional[st
     return None
 
 
+def _has_business(facts: Dict[str, Any]) -> bool:
+    """Check if business sector, status, or stage has been identified."""
+    return any(
+        _has_value(facts.get(k))
+        for k in ("business_status", "business_type", "business", "stage")
+    )
+
+
+def _has_location(facts: Dict[str, Any]) -> bool:
+    """Check if geographic location, district, or location type is identified."""
+    return any(
+        _has_value(facts.get(k))
+        for k in ("location", "district", "location_type")
+    )
+
+
+def _has_question(text: str) -> bool:
+    """Check if text contains a question or prompt for user info."""
+    if not text:
+        return False
+    if "?" in text or "؟" in text:
+        return True
+    question_starters = (
+        "have you", "are you", "do you", "did you", "can you", "will you",
+        "could you", "would you", "how much", "how many", "what is", "what kind",
+        "which village", "which town", "which city", "which district", "where do", "where are",
+        "please share", "tell me",
+        "మీరు", "మీకు", "ఎంత", "ఏ గ్రామం", "తీసుకున్నారా", "ఉన్నారా", "నడుపుతున్నారా"
+    )
+    raw_sentences = re.split(r"(?<=[.!?\n])\s+", text.strip())
+    for s in raw_sentences:
+        st = s.strip().lower()
+        if any(st.startswith(q) for q in question_starters):
+            return True
+    return False
+
+
+def _is_concluding(text: str) -> bool:
+    """Check if text indicates schemes are being presented or flow has concluded."""
+    if not text:
+        return False
+    lowered = text.lower()
+    concluding_phrases = (
+        "present the specific government schemes",
+        "present the specific schemes",
+        "present the government schemes",
+        "presenting the specific government schemes",
+        "presenting the matching schemes",
+        "present the matching schemes",
+        "presenting matching schemes",
+        "present matching schemes",
+        "schemes matching your profile",
+        "matching your profile",
+        "matching schemes",
+        "here are the government schemes",
+        "here are the schemes",
+        "matching government schemes",
+        "specific government schemes",
+        "matching your business",
+        "schemes for your business",
+        "పథకాలు ఇక్కడ ఉన్నాయి",
+        "పథకాలను అందిస్తున్నాను",
+        "పథకాలను చూపిస్తున్నాను",
+        "పథకాలను పరిశీలించండి",
+    )
+    return any(p in lowered for p in concluding_phrases)
+
+
+def _is_acknowledgment(text: str) -> bool:
+    """Check if user message is an acknowledgment like ok, yes, etc."""
+    if not text:
+        return False
+    cleaned = re.sub(r"[^\w\s]", "", text.strip().lower()).strip()
+    return cleaned in (
+        "ok", "okay", "k", "yes", "yeah", "yup", "sure", "fine", "cool",
+        "next", "continue", "proceed", "show", "show schemes", "done",
+        "సరే", "సరి", "అవును", "హా", "హాన్"
+    )
+
+
 def _clean_trailing_question(text: str, lang: str) -> str:
     """When schemes are shown, remove any trailing question sentence or prompt for more info."""
     closing = (
@@ -492,8 +588,9 @@ def _clean_trailing_question(text: str, lang: str) -> str:
 
     question_starters = (
         "have you", "are you", "do you", "did you", "can you", "will you",
-        "how much", "how many", "what is", "what kind", "which village",
-        "which town", "which city", "where do", "where are",
+        "could you", "would you", "how much", "how many", "what is", "what kind",
+        "which village", "which town", "which city", "which district", "where do", "where are",
+        "please share", "tell me",
         "మీరు", "మీకు", "ఎంత", "ఏ గ్రామం", "తీసుకున్నారా", "ఉన్నారా", "నడుపుతున్నారా"
     )
 
@@ -511,6 +608,9 @@ def _clean_trailing_question(text: str, lang: str) -> str:
     intro = " ".join(kept).strip()
     if intro and not intro.endswith((".", "!", "?")):
         intro += "."
+
+    if intro and _is_concluding(intro):
+        return intro
 
     return f"{intro} {closing}".strip() if intro else closing
 
@@ -565,10 +665,19 @@ def run_followup(
 
         # Check if we have enough facts to be "done"
         missing = [k for k in FACT_KEYS if not _has_value(known_facts.get(k))]
-        has_key_facts = _has_value(known_facts.get("location")) and _has_value(
-            known_facts.get("business_status")
+        has_key_facts = _has_location(known_facts) and _has_business(known_facts)
+
+        user_acked = _is_acknowledgment(masked) and rounds_asked >= 1
+        llm_concluded = _is_concluding(reply_text) or not _has_question(reply_text)
+
+        # Complete proactively when key facts are known, rounds cap reached, LLM concluded, or user acked
+        done = (
+            not missing
+            or has_key_facts
+            or rounds_asked >= 2
+            or llm_concluded
+            or user_acked
         )
-        done = not missing or (has_key_facts and rounds_asked >= 3)
 
         if not done and missing:
             question_key = missing[0]
@@ -598,10 +707,11 @@ def run_followup(
     # Find the next missing fact to ask about.
     next_q = _fallback_next_question(known_facts, lang)
     # Complete and show schemes if all facts are known, or if key facts (location, business, etc.) are gathered
-    has_essential_facts = _has_value(known_facts.get("location")) and (
-        _has_value(known_facts.get("business_status")) or _has_value(known_facts.get("loan_amount"))
+    has_essential_facts = _has_location(known_facts) and (
+        _has_business(known_facts) or _has_value(known_facts.get("loan_amount"))
     )
-    done = next_q is None or (has_essential_facts and rounds_asked >= 3)
+    user_acked = _is_acknowledgment(masked) and rounds_asked >= 1
+    done = next_q is None or (has_essential_facts and rounds_asked >= 3) or user_acked
     if done:
         next_q = None
 

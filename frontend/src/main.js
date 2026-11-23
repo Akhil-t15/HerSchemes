@@ -585,7 +585,7 @@ function renderAll() {
 
 // ---------- Health ----------
 // Status line was removed from the top bar; the health fetch in loadHealth still runs.
-function renderHealth() {}
+function renderHealth() { }
 
 async function loadHealth() {
   try {
@@ -961,9 +961,9 @@ async function askFollowUp(reply, text, skipped) {
     // Use the LLM's natural reply, or fall back to the first question
     reply.reply = data.reply || null;
     reply.question = !skipped && data.questions.length > 0 ? data.questions[0] : null;
-    reply.matches = data.done ? data.matches : [];
+    reply.matches = (data.done || (data.matches && data.matches.length > 0)) ? data.matches : [];
     if (data.reply || reply.question) state.roundsAsked += 1;
-    if (data.done || skipped) state.lastQuestionKey = null;
+    if (data.done || skipped || (data.matches && data.matches.length > 0)) state.lastQuestionKey = null;
   } catch {
     reply.pending = false;
     reply.error = true;
@@ -1858,6 +1858,15 @@ function renderPartner() {
   if (p.role === "sponsor") partnerView.append(buildImpactView(p.impact));
 }
 
+function formatPhone(phone) {
+  if (!phone) return "";
+  const cleaned = String(phone).replace(/\D/g, "");
+  if (cleaned.length === 10) {
+    return `${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
+  }
+  return String(phone);
+}
+
 function buildLeadsView(leads) {
   const wrap = el("div", "");
   wrap.append(el("h2", "", t(state.lang, "leadsTitle")));
@@ -1903,7 +1912,7 @@ function buildLeadsView(leads) {
       });
       actionTd.append(callBtn);
       tr.append(
-        el("td", "", String(row.phone ?? "")),
+        el("td", "", `+91 ${formatPhone(row.phone)}`),
         el("td", "", String(row.scheme_slug ?? "")),
         el("td", "", String(row.consent_at ?? "")),
         actionTd

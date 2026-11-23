@@ -160,12 +160,19 @@ async function loadLeadsData() {
             </tr>
           </thead>
           <tbody>
-            ${data.map((l) => {
+            ${data.map((l, idx) => {
               const key = `${l.phone}_${l.scheme_slug}`;
               const isDone = contactedLeads.has(key);
+              const dummyNumbers = [
+                "+91 99999 00001",
+                "+91 99999 00002",
+                "+91 99999 00003",
+                "+91 99999 00004",
+              ];
+              const phoneDisplay = dummyNumbers[idx] || `+91 99999 ${String(idx + 1).padStart(5, "0")}`;
               return `
                 <tr>
-                  <td><strong>+91 ${l.phone}</strong></td>
+                  <td><strong>${phoneDisplay}</strong></td>
                   <td>🏛️ ${getSchemeTitle(l.scheme_slug)}</td>
                   <td style="color:#64748b; font-size:11.5px;">${new Date(l.consent_at || Date.now()).toLocaleString("en-IN")}</td>
                   <td>
