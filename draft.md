@@ -1,9 +1,3 @@
-TO BUILD ANY MODULE/FEATURE, YOU MUST SEARCH WEB FOR BEST PRACTICES TO SAVE TIME. 
-RESEARCH MORE ON LIVE VOICE AGENT BECAUSE THIS IS OUR SELLING POINT- FOCUS ON LOW LATENCY, FEATURES LIKE BARGE IN, FAST REPLIES, NATURAL INTERUPTIONS, CLEAN AUDIO, SAFETY NET & TRACKING [ IF VOICE IS DOWN-INDICATE USERS TO USE TEXT MODE] ETC
-
-NOTE-NEVER HARDCODE – THE APP SHOULD WORK LIKE A LIVE APPLICATION
-
-
 
 Prompt 1: The Big Idea & Ground Rules
 "Hey, I have an idea I want to build with you. In Telangana, a lot of women running small businesses—like rural SHG members, tailors, artisans, and shop owners—miss out on government schemes because the rules are confusing,overlapping with central schemes and in hard English. I want to build a completely free web app “HerScheme” (and later WhatsApp -from which users can directly interact with out mcp server [tools]) without the need of opening the app , that helps them find the right schemes in simple Telugu and English.
