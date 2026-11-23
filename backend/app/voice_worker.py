@@ -508,6 +508,20 @@ def main():
     # 2.0: WorkerOptions is replaced by AgentServer; the entrypoint is served as an rtc_session.
     # Windows reserves 8075-8174 (among other ranges), so livekit-agents' defaults 8080/8081
     # fail with WinError 10013. Ports are read from the environment; defaults avoid reserved ranges.
+    # livekit-agents 2.0 defaults to "forkserver" on Linux, which fails with
+    # "native process observation failed: forkserver receipt truncated" / "EOFError"
+    # because preloading plugins (like silero/onnxruntime) spawns background native threads.
+    # Enforce "spawn" mode and an extended warmup timeout for reliable operation on Linux / Render.
+    import sys
+    if "start" in sys.argv or len(sys.argv) <= 1:
+        if len(sys.argv) <= 1:
+            sys.argv.append("start")
+        if "--multiprocessing-context" not in sys.argv:
+            sys.argv.extend(["--multiprocessing-context", "spawn"])
+        if "--initialize-process-timeout" not in sys.argv:
+            init_timeout = os.getenv("VOICE_INITIALIZE_TIMEOUT", "60")
+            sys.argv.extend(["--initialize-process-timeout", init_timeout])
+
     public_port = int(os.getenv("VOICE_WORKER_PORT", "9080"))
     health_port = int(os.getenv("VOICE_WORKER_HEALTH_PORT", "9081"))
     server = AgentServer(
