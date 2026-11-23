@@ -450,6 +450,8 @@ async def entrypoint(ctx):
     await session.start(agent=parts["Agent"](state), room=ctx.room)
     # Greet only after the caller has joined, so nothing is spoken to an empty room.
     await ctx.wait_for_participant()
+    # Allow the client WebRTC pipeline 500ms to complete track subscription and audio attachment
+    await asyncio.sleep(0.5)
     idle["ready"] = True
     await session.say(GREETING_EN)
 
