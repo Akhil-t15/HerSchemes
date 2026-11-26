@@ -1,6 +1,6 @@
 # HerScheme
 
-HerScheme is a multilingual (Telugu and English) web application developed with "CODEBENDERD IDE" to help women entrepreneurs in India—specifically rural Self Help Group (SHG) members, tailors, artisans, food processors, and micro-business owners—discover, evaluate, and apply for government schemes without getting misled by middlemen or confused by complex bureaucratic rules.
+HerScheme is a multilingual (Telugu and English) web application developed with "CODEBENDERS IDE" to help women entrepreneurs in India—specifically rural Self Help Group (SHG) members, tailors, artisans, food processors, and micro-business owners—discover, evaluate, and apply for government schemes without getting misled by middlemen or confused by complex bureaucratic rules.
 
 ---
 
